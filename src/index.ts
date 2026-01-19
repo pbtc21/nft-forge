@@ -33,7 +33,10 @@ const STYLES = {
   pixel: { name: "Pixel", description: "Retro 8-bit aesthetic" },
   circuit: { name: "Circuit", description: "Digital circuitry patterns" },
   stacks: { name: "Stacks", description: "Stacks ecosystem themed" },
+  faces: { name: "Bitcoin Faces", description: "Unique faces from bitcoinfaces.xyz" },
 };
+
+const BITCOIN_FACES_API = "https://bitcoinfaces.xyz/api";
 
 const PALETTES = [
   ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"], // Vibrant
@@ -46,6 +49,24 @@ const PALETTES = [
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("*", cors());
+
+// Fetch Bitcoin Face SVG from bitcoinfaces.xyz
+async function fetchBitcoinFace(seed: string): Promise<string> {
+  try {
+    const response = await fetch(`${BITCOIN_FACES_API}/get-svg-code?name=${encodeURIComponent(seed)}`);
+    if (response.ok) {
+      return await response.text();
+    }
+  } catch (e) {
+    console.error("Bitcoin Faces API error:", e);
+  }
+  // Fallback SVG if API fails
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+    <rect width="400" height="400" fill="#1a1a2e"/>
+    <text x="200" y="200" text-anchor="middle" fill="#f7931a" font-size="24">Bitcoin Face</text>
+    <text x="200" y="240" text-anchor="middle" fill="#888" font-size="14">${seed.slice(0, 20)}...</text>
+  </svg>`;
+}
 
 // Seeded random number generator
 function seededRandom(seed: number) {
@@ -371,7 +392,7 @@ app.get("/", (c) => {
     <div class="section">
       <h2>How It Works</h2>
       <ol style="color: #a0a0a0; line-height: 2; padding-left: 20px;">
-        <li>Choose an art style (Geometric, Organic, Pixel, Circuit, Stacks)</li>
+        <li>Choose an art style (Geometric, Organic, Pixel, Circuit, Stacks, Bitcoin Faces)</li>
         <li>Provide recipient addresses for your airdrop</li>
         <li>Pay via x402 (STX or sBTC)</li>
         <li>Unique artwork generated for each recipient</li>
@@ -424,15 +445,19 @@ app.get("/", (c) => {
   </div>
 
   <script>
-    const styles = ['geometric', 'organic', 'pixel', 'circuit', 'stacks'];
+    const styles = ['geometric', 'organic', 'pixel', 'circuit', 'stacks', 'faces'];
     const container = document.getElementById('previews');
 
     styles.forEach(style => {
-      const seed = 'demo-' + Math.random().toString(36).slice(2);
+      // For faces, use a sample Stacks address
+      const seed = style === 'faces'
+        ? 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9'
+        : 'demo-' + Math.random().toString(36).slice(2);
+      const label = style === 'faces' ? 'Bitcoin Faces' : style.charAt(0).toUpperCase() + style.slice(1);
       container.innerHTML += \`
         <div class="preview-card">
           <img src="/preview/\${style}/\${seed}" alt="\${style}">
-          <div class="label">\${style.charAt(0).toUpperCase() + style.slice(1)}</div>
+          <div class="label">\${label}</div>
         </div>
       \`;
     });
@@ -483,12 +508,21 @@ app.get("/styles", (c) => {
 });
 
 // Preview artwork
-app.get("/preview/:style/:seed", (c) => {
+app.get("/preview/:style/:seed", async (c) => {
   const style = c.req.param("style");
   const seed = c.req.param("seed");
 
   if (!STYLES[style as keyof typeof STYLES]) {
     return c.json({ error: "Invalid style", available: Object.keys(STYLES) }, 400);
+  }
+
+  // Special handling for Bitcoin Faces
+  if (style === "faces") {
+    const svg = await fetchBitcoinFace(seed);
+    return c.body(svg, 200, {
+      "Content-Type": "image/svg+xml",
+      "Cache-Control": "public, max-age=86400",
+    });
   }
 
   const svg = generateArt(seed, style);
@@ -697,6 +731,20 @@ app.get("/image/:collectionId/:tokenId", async (c) => {
   }
 
   const collection: Collection = JSON.parse(data);
+  const tokenNum = parseInt(tokenId);
+
+  // For Bitcoin Faces, use the recipient's address
+  if (collection.style === "faces") {
+    const recipientAddress = collection.recipients[tokenNum - 1];
+    if (recipientAddress) {
+      const svg = await fetchBitcoinFace(recipientAddress);
+      return c.body(svg, 200, {
+        "Content-Type": "image/svg+xml",
+        "Cache-Control": "public, max-age=86400",
+      });
+    }
+  }
+
   const seed = `${collectionId}-${tokenId}`;
   const svg = generateArt(seed, collection.style);
 
