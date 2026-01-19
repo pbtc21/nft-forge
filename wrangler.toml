@@ -1,0 +1,12 @@
+name = "nft-forge"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+[vars]
+PAYMENT_ADDRESS = "SPP5ZMH9NQDFD2K5CEQZ6P02AP8YPWMQ75TJW20M"
+AIRDROP_CANNON_URL = "https://airdrop-cannon.p-d07.workers.dev"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "6d52f6cb2c044215a0c0c999a0f853d1"
