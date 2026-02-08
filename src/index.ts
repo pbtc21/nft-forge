@@ -529,6 +529,38 @@ app.get("/preview/:style/:seed", async (c) => {
   return c.body(svg, 200, { "Content-Type": "image/svg+xml" });
 });
 
+// x402 discovery for forge
+app.get("/forge", (c) => {
+  const paymentAddress = c.env?.PAYMENT_ADDRESS || "SPKH9AWG0ENZ87J1X0PBD4HETP22G8W22AFNVF8K";
+  return c.json({
+    x402Version: 1,
+    name: "NFT Forge - Create & Airdrop NFTs",
+    image: "https://nft-forge.p-d07.workers.dev/forge-icon.png",
+    accepts: [{
+      scheme: "exact",
+      network: "stacks",
+      maxAmountRequired: "10000", // base 0.01 STX, +0.001 per NFT
+      resource: "/forge",
+      description: "Generate procedural art NFTs and airdrop to recipients (0.01 STX base + 0.001 STX per NFT)",
+      mimeType: "application/json",
+      payTo: paymentAddress,
+      maxTimeoutSeconds: 600,
+      asset: "STX",
+      outputSchema: {
+        input: { type: "http", method: "POST", bodyType: "json" },
+        output: {
+          type: "object",
+          properties: {
+            success: { type: "boolean" },
+            collectionId: { type: "string" },
+            nftCount: { type: "number" }
+          }
+        }
+      }
+    }]
+  });
+});
+
 // Forge collection & airdrop
 app.post("/forge", async (c) => {
   const paymentTx = c.req.header("X-Payment");
