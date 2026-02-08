@@ -587,7 +587,7 @@ app.post("/forge", async (c) => {
         headers: {
           "X-Payment-Required": "true",
           "X-Payment-Amount": totalCost.toString(),
-          "X-Payment-Address": c.env.PAYMENT_ADDRESS || "SPP5ZMH9NQDFD2K5CEQZ6P02AP8YPWMQ75TJW20M",
+          "X-Payment-Address": "SPKH9AWG0ENZ87J1X0PBD4HETP22G8W22AFNVF8K",
         },
       }
     );
